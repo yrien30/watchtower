@@ -90,10 +90,12 @@ func performRollingRestart(containers []container.Container, client container.Cl
 			if err := stopStaleContainer(containers[i], client, params); err != nil {
 				failed++
 			}
-			if err := restartStaleContainer(containers[i], client, params); err != nil {
-				failed++
+			if !containers[i].IsRunning() {
+				if err := restartStaleContainer(containers[i], client, params); err != nil {
+					failed++
+				}
+				cleanupImageIDs[containers[i].ImageID()] = true
 			}
-			cleanupImageIDs[containers[i].ImageID()] = true
 		}
 	}
 
@@ -151,10 +153,12 @@ func restartContainersInSortedOrder(containers []container.Container, client con
 		if !c.Stale {
 			continue
 		}
-		if err := restartStaleContainer(c, client, params); err != nil {
-			failed++
+		if !c.IsRunning() {
+			if err := restartStaleContainer(c, client, params); err != nil {
+				failed++
+			}
+			imageIDs[c.ImageID()] = true
 		}
-		imageIDs[c.ImageID()] = true
 	}
 
 	if params.Cleanup {
