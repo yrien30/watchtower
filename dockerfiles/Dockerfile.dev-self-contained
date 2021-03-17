@@ -2,7 +2,7 @@
 # Builder
 #
 
-FROM golang:alpine as builder
+FROM arm64v8/golang:alpine as builder
 
 # use version (for example "v0.3.3") or "master"
 ARG WATCHTOWER_VERSION=master
@@ -26,7 +26,7 @@ RUN \
 # watchtower
 #
 
-FROM scratch
+FROM arm64v8/alpine
 
 LABEL "com.centurylinklabs.watchtower"="true"
 
