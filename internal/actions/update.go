@@ -131,7 +131,7 @@ func stopStaleContainer(container container.Container, client container.Client, 
 		}
 		if SkipUpdate {
 			log.Debug("Skipping container as the pre-update command returned exit code 75 (EX_TEMPFAIL)")
-			return nil
+			return errors.New("Skipping container as the pre-update command returned exit code 75 (EX_TEMPFAIL)")
 		}
 	}
 
