@@ -87,10 +87,10 @@ func performRollingRestart(containers []container.Container, client container.Cl
 
 	for i := len(containers) - 1; i >= 0; i-- {
 		if containers[i].Stale {
-			if err := stopStaleContainer(containers[i], client, params); err != nil {
+			err := stopStaleContainer(containers[i], client, params);
+			if err != nil {
 				failed++
-			}
-			if !containers[i].IsRunning() {
+			else {
 				if err := restartStaleContainer(containers[i], client, params); err != nil {
 					failed++
 				}
