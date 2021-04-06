@@ -69,8 +69,8 @@ func Update(client container.Client, params types.UpdateParams) (*metrics2.Metri
 	if params.RollingRestart {
 		metric.Failed += performRollingRestart(containersToUpdate, client, params)
 	} else {
-		metric.Failed += stopContainersInReversedOrder(containersToUpdate, client, params)
-		metric.Failed += restartContainersInSortedOrder(containersToUpdate, client, params)
+		metric.Failed, imageIDsOfStopedContainers := stopContainersInReversedOrder(containersToUpdate, client, params)
+		metric.Failed += restartContainersInSortedOrder(containersToUpdate, client, params, imageIDsOfStopedContainers)
 	}
 
 	metric.Updated = staleCount - (metric.Failed - staleCheckFailed)
@@ -105,14 +105,18 @@ func performRollingRestart(containers []container.Container, client container.Cl
 	return failed
 }
 
-func stopContainersInReversedOrder(containers []container.Container, client container.Client, params types.UpdateParams) int {
+func stopContainersInReversedOrder(containers []container.Container, client container.Client, params types.UpdateParams) (int, map[string]bool) {
+	imageIDsOfStopedContainers := make(map[string]bool)
 	failed := 0
 	for i := len(containers) - 1; i >= 0; i-- {
 		if err := stopStaleContainer(containers[i], client, params); err != nil {
 			failed++
+		} else {
+			imageIDsOfStopedContainers[containers[i].ImageID()] = true
 		}
+		
 	}
-	return failed
+	return failed, imageIDsOfStopedContainers
 }
 
 func stopStaleContainer(container container.Container, client container.Client, params types.UpdateParams) error {
@@ -144,7 +148,7 @@ func stopStaleContainer(container container.Container, client container.Client, 
 	return nil
 }
 
-func restartContainersInSortedOrder(containers []container.Container, client container.Client, params types.UpdateParams) int {
+func restartContainersInSortedOrder(containers []container.Container, client container.Client, params types.UpdateParams, imageIDsOfStopedContainers map[string]bool) int {
 	imageIDs := make(map[string]bool)
 
 	failed := 0
@@ -153,7 +157,7 @@ func restartContainersInSortedOrder(containers []container.Container, client con
 		if !c.Stale {
 			continue
 		}
-		if !c.IsRunning() {
+		if imageIDsOfStopedContainers[c.ImageID()] {
 			if err := restartStaleContainer(c, client, params); err != nil {
 				failed++
 			}
